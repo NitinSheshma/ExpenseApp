@@ -1,3 +1,16 @@
+# Expense App React Client
+## How to Run Locally
+1. Run `npm install` (one-time)
+2. Run `npm run dev`.
+
+## Environment Variables
+Create .env file and ensure you are putting below
+variables.
+```
+VITE_GOOGLE_CLIENT_ID=<your-google-client-id>
+VITE_SERVER_ENDPOINT=http://localhost:5001
+VITE_RAZORPAY_KEY_ID=<your-key-id>
+```
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

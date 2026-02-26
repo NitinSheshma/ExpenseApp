@@ -3,9 +3,11 @@ const jwt = require('jsonwebtoken');
 const authMiddleware = {
     protect: async (request, response, next) => {
         try {
+            console.log(`[AUTH] ${request.method} ${request.originalUrl || request.url} -> path: ${request.path}`);
             const token = request.cookies?.jwtToken;
 
             if (!token) {
+                console.log(`[AUTH] No token found for ${request.path}`);
                 return response.status(401).json({
                     error: 'Unauthorized access'
                 });

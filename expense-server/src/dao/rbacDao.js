@@ -1,13 +1,30 @@
+const User = require('../model/users');
+
 const rbacDao = {
-    create: async (email, name, role, adminId) => {
-        // TODO: Implement RBAC user creation
-        // This should create a new user role/permission record
+    create: async (email, name, role, password, adminId) => {
+        return await User.create({
+            email: email,
+            password: password,
+            name: name,
+            role: role,
+            adminId: adminId
+        });
     },
-    update: async (userId, role) => {
-        // TODO: Implement role update
+
+    update: async (userId, name, role) => {
+        return await User.findByIdAndUpdate(
+            userId,
+            { name, role },
+            { new: true }
+        );
     },
+
     delete: async (userId) => {
-        // TODO: Implement role deletion
+        return await User.findByIdAndDelete(userId);
+    },
+
+    getUsersByAdminId: async (adminId) => {
+        return await User.find({ adminId }).select("-password");
     }
 };
 

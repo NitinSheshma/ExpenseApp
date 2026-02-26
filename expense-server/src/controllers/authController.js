@@ -29,6 +29,7 @@ const authController = {
                 const token = jwt.sign({
                     name: user.name,
                     email: user.email,
+                    role: user.role,
                     id: user._id
                 }, process.env.JWT_SECRET,
                     { expiresIn: '1h' }
@@ -214,6 +215,7 @@ const authController = {
                 const token = jwt.sign({
                     name: user.name,
                     email: user.email,
+                    role: user.role,
                     googleId: user.googleId,
                     id: user._id
                 }, process.env.JWT_SECRET,

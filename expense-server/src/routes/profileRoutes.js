@@ -8,3 +8,5 @@ router.use(authMiddleware.protect);
 router.get('/get-user-info',usersController.getUserInfo);
 
 module.exports = router;
+
+module.exports = router;

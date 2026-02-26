@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const fs = require('fs');
 
 const mongoose = require('mongoose');
 const authRoutes = require('./src/routes/authRoutes');
@@ -11,9 +12,19 @@ const paymentsRoutes = require('./src/routes/paymentRoutes');
 const profileRoutes = require('./src/routes/profileRoutes');
 const expenseRoutes = require('./src/routes/expenseRoutes');
 
+// Clear old logs
+fs.writeFileSync('./request-logs.txt', '=== Server Started ===\n');
+function logToFile(msg) {
+    fs.appendFileSync('./request-logs.txt', msg + '\n');
+    console.log(msg);
+}
+
+logToFile('');
+logToFile('[SERVER] Initializing...');
+
 mongoose.connect(process.env.MONGO_DB_CONNECTION_URI)
-    .then(() => console.log('MongoDB Connected'))
-    .catch((error) => console.log('Error Connecting to Database: ', error));
+    .then(() => logToFile('MongoDB Connected'))
+    .catch((error) => logToFile('Error Connecting to Database: ' + error));
 
 // CORS configuration to allow multiple origins
 const corsOption = {
@@ -50,5 +61,5 @@ app.use('/profile', profileRoutes);
 app.use('/expenses', expenseRoutes);
 
 app.listen(5001, () => {
-    console.log('Server is running on port 5001');
+    logToFile('Server is running on port 5001');
 });

@@ -4,94 +4,102 @@ import axios from "axios";
 import { serverEndpoint } from "../config/appConfig";
 import AddExpenseModal from "../components/AddExpenseModal";
 import ExpenseCard from "../components/ExpenseCard";
-import SettlementSummary from "../components/SettlementSummary";
 
 function GroupExpenses() {
     const { groupId } = useParams();
-
     const [group, setGroup] = useState(null);
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [show, setShow] = useState(false);
+    const [error, setError] = useState(null);
+    const [showAddExpense, setShowAddExpense] = useState(false);
 
     // Fetch group details
-    useEffect(() => {
-        const fetchGroupDetails = async () => {
-            try {
-                // Since we don't have a dedicated get group endpoint, 
-                // we can use the groups/my-groups and filter
-                // For now, we'll show the groupId and fetch expenses
-                const expenseResponse = await axios.get(
-                    `${serverEndpoint}/expenses/group/${groupId}`,
-                    { withCredentials: true }
-                );
-                setExpenses(expenseResponse.data.expenses || []);
-            } catch (error) {
-                console.log(error);
-            } finally {
-                setLoading(false);
+    const fetchGroupDetails = async () => {
+        try {
+            if (!groupId) {
+                console.warn('[GroupExpenses] No groupId provided! Cannot fetch group.');
+                setError("No group ID provided");
+                return;
             }
-        };
-
-        fetchGroupDetails();
-    }, [groupId]);
-
-    // Fetch group details by making a request to get all groups and filter
-    useEffect(() => {
-        const fetchFullGroupDetails = async () => {
-            try {
-                const response = await axios.get(
-                    `${serverEndpoint}/groups/my-groups`,
-                    { withCredentials: true }
-                );
-                const foundGroup = response.data.find((g) => g._id === groupId);
-                if (foundGroup) {
-                    setGroup(foundGroup);
+            
+            const url = `${serverEndpoint}/groups/${groupId}`;
+            console.log('[GroupExpenses] Fetching group from URL:', url);
+            console.log('[GroupExpenses] Using serverEndpoint:', serverEndpoint);
+            console.log('[GroupExpenses] groupId:', groupId);
+            
+            const response = await axios.get(
+                url,
+                { 
+                    withCredentials: true,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
                 }
-            } catch (error) {
-                console.log(error);
+            );
+            console.log('[GroupExpenses] Group fetch successful. Status:', response.status);
+            console.log('[GroupExpenses] Group data:', response.data);
+            setGroup(response.data);
+            setError(null);
+        } catch (err) {
+            console.error('[GroupExpenses] Error details:', err);
+            if (err.response) {
+                console.error('[GroupExpenses] Response status:', err.response.status);
+                console.error('[GroupExpenses] Response data:', err.response.data);
+            } else if (err.request) {
+                console.error('[GroupExpenses] No response received. Request:', err.request);
+            } else {
+                console.error('[GroupExpenses] Error message:', err.message);
             }
-        };
+            setError("Unable to fetch group details - see console for details");
+            // Don't stop loading - we can still show expenses
+        }
+    };
 
+    // Fetch expenses for the group
+    const fetchExpenses = async () => {
+        try {
+            const response = await axios.get(
+                `${serverEndpoint}/expenses/group/${groupId}`,
+                { withCredentials: true }
+            );
+            setExpenses(response.data.expenses || []);
+        } catch (err) {
+            console.log(err);
+            setError("Unable to fetch expenses");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         if (groupId) {
-            fetchFullGroupDetails();
+            fetchGroupDetails();
+            fetchExpenses();
         }
     }, [groupId]);
 
-    const handleAddExpenseSuccess = (newExpense) => {
+    const handleExpenseAdded = (newExpense) => {
         setExpenses([newExpense, ...expenses]);
+        setShowAddExpense(false);
     };
 
-    const handleExpenseDelete = (expenseId) => {
-        setExpenses(expenses.filter((e) => e._id !== expenseId));
-    };
-
-    const handleGroupSettle = (updatedGroup) => {
-        setGroup(updatedGroup);
+    const handleExpenseDeleted = (expenseId) => {
+        setExpenses(expenses.filter(expense => expense._id !== expenseId));
     };
 
     if (loading) {
         return (
-            <div
-                className="container p-5 d-flex flex-column align-items-center justify-content-center"
-                style={{ minHeight: "60vh" }}
-            >
-                <div
-                    className="spinner-grow text-primary"
-                    role="status"
-                    style={{ width: "3rem", height: "3rem" }}
-                >
+            <div className="container p-5 text-center">
+                <div className="spinner-border" role="status">
                     <span className="visually-hidden">Loading...</span>
                 </div>
-                <p className="mt-3 text-muted fw-medium">Loading group expenses...</p>
             </div>
         );
     }
 
     return (
         <div className="container py-5">
-            {/* Breadcrumb */}
-            <nav aria-label="breadcrumb" className="mb-4">
+            <nav aria-label="breadcrumb">
                 <ol className="breadcrumb">
                     <li className="breadcrumb-item">
                         <Link to="/dashboard">Groups</Link>
@@ -102,88 +110,64 @@ function GroupExpenses() {
                 </ol>
             </nav>
 
-            {/* Group Header */}
+            {error && (
+                <div className="alert alert-danger" role="alert">
+                    {error}
+                </div>
+            )}
+
             {group && (
-                <div className="mb-5">
-                    <h2 className="fw-bold display-6 mb-2">
-                        {group.name}
-                    </h2>
-                    <p className="text-muted">
-                        {group.description}
-                    </p>
-                    <div className="mt-3">
-                        <h6 className="fw-bold mb-2">Members:</h6>
+                <div className="bg-white p-5 rounded-4 shadow-sm border mb-4">
+                    <h2 className="fw-bold mb-3">{group.name}</h2>
+                    <p className="text-muted">{group.description}</p>
+                    
+                    <div className="mb-3">
+                        <h5>Members:</h5>
                         <div className="d-flex flex-wrap gap-2">
-                            {group.membersEmail.map((member, index) => (
-                                <span key={index} className="badge bg-primary">
-                                    {member}
+                            {group.membersEmail && group.membersEmail.map((email, idx) => (
+                                <span key={idx} className="badge bg-primary">
+                                    {email}
                                 </span>
                             ))}
                         </div>
                     </div>
-                </div>
-            )}
 
-            {/* Settlement Summary */}
-            {group && (
-                <SettlementSummary
-                    groupId={groupId}
-                    group={group}
-                    onGroupSettle={handleGroupSettle}
-                />
-            )}
-
-            {/* Add Expense Section */}
-            <div className="mb-5">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h4 className="fw-bold mb-0">Expenses</h4>
                     <button
-                        className="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm"
-                        onClick={() => setShow(true)}
+                        className="btn btn-primary"
+                        onClick={() => setShowAddExpense(true)}
                     >
-                        <i className="bi bi-plus-lg me-2"></i>
-                        Add Expense
+                        + Add Expense
                     </button>
                 </div>
+            )}
 
+            <div className="bg-white p-5 rounded-4 shadow-sm border">
+                <h3 className="fw-bold mb-4">Transactions</h3>
+                
                 {expenses.length === 0 ? (
-                    <div className="text-center py-5 bg-light rounded-4 border border-dashed border-primary border-opacity-25">
-                        <i
-                            className="bi bi-wallet2 text-primary"
-                            style={{ fontSize: "3rem" }}
-                        ></i>
-                        <h5 className="fw-bold mt-3">No Expenses Yet</h5>
-                        <p className="text-muted">Start adding expenses to track costs</p>
-                        <button
-                            className="btn btn-outline-primary"
-                            onClick={() => setShow(true)}
-                        >
-                            Add First Expense
-                        </button>
-                    </div>
+                    <p className="text-muted text-center py-5">
+                        No expenses yet. Add one to get started!
+                    </p>
                 ) : (
-                    <div>
+                    <div className="row gap-3">
                         {expenses.map((expense) => (
                             <ExpenseCard
                                 key={expense._id}
                                 expense={expense}
-                                onDelete={handleExpenseDelete}
+                                onDelete={handleExpenseDeleted}
                             />
                         ))}
                     </div>
                 )}
             </div>
 
-            {/* Add Expense Modal */}
-            {group && (
-                <AddExpenseModal
-                    show={show}
-                    onHide={() => setShow(false)}
-                    groupId={groupId}
-                    groupMembers={group.membersEmail}
-                    onSuccess={handleAddExpenseSuccess}
-                />
-            )}
+            <AddExpenseModal
+                show={showAddExpense}
+                onHide={() => setShowAddExpense(false)}
+                groupId={groupId}
+                groupMembers={group?.membersEmail || []}
+                onSuccess={handleExpenseAdded}
+            />
         </div>
     );
 }

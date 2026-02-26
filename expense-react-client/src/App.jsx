@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
 import AppLayout from "./components/AppLayout";
 import { useEffect, useState } from "react";
 import Dashboard from "./pages/Dashboard";
@@ -11,13 +10,23 @@ import UserLayout from "./components/UserLayout";
 import axios from "axios";
 import { serverEndpoint } from "./config/appConfig";
 import { useSelector, useDispatch } from "react-redux";
-import { SET_USER, CLEAR_USER } from "./redux/user/action";
+import { SET_USER } from "./redux/user/action";
 import Groups from "./pages/Groups";
 import GroupExpenses from "./pages/GroupExpenses";
+import ManageUsers from "./pages/ManageUsers";
+import ProtectedRoute from "./rbac/ProtectedRoute";
+import UnauthorizedAccess from "./components/errors/UnauthorizedAccess";
 import ManagePayments from "./pages/ManagePayments";
+import ManageSubscription from "./pages/ManageSubscription";
 
 function App() {
     const dispatch = useDispatch();
+    // Value of userDetails represents whether the user
+    // is logged in or not.
+
+    // useSelector takes in 1 function as input. Redux calls the function that
+    // you pass to useSelector with all the values its storing/managing.
+    // We need to take out userDetails since we're interested in userDetails object.
     const userDetails = useSelector((state) => state.userDetails);
     const [loading, setLoading] = useState(true);
 
@@ -29,15 +38,13 @@ function App() {
                 { withCredentials: true }
             );
 
+            // setUserDetails(response.data.user);
             dispatch({
                 type: SET_USER,
                 payload: response.data.user,
             });
         } catch (error) {
-            // If not logged in, clear the user from Redux
-            dispatch({
-                type: CLEAR_USER
-            });
+            console.log(error);
         } finally {
             setLoading(false);
         }
@@ -93,18 +100,6 @@ function App() {
                     )
                 }
             />
-            <Route
-                path="/forgot-password"
-                element={
-                    userDetails ? (
-                        <Navigate to="/dashboard" />
-                    ) : (
-                        <AppLayout>
-                            <ForgotPassword />
-                        </AppLayout>
-                    )
-                }
-            />
 
             <Route
                 path="/dashboard"
@@ -131,21 +126,70 @@ function App() {
                     )
                 }
             />
+
             <Route
-                path="/manage-payments"
+                path="/manage-users"
                 element={
                     userDetails ? (
-                        <UserLayout>
-                            <ManagePayments />
-                        </UserLayout>
+                        <ProtectedRoute roles={["admin"]}>
+                            <UserLayout>
+                                <ManageUsers />
+                            </UserLayout>
+                        </ProtectedRoute>
                     ) : (
                         <Navigate to="/login" />
                     )
                 }
             />
+
             <Route
                 path="/logout"
-                element={<Logout />}
+                element={userDetails ? <Logout /> : <Navigate to="/login" />}
+            />
+
+            <Route
+                path="/unauthorized-access"
+                element={
+                    userDetails ? (
+                        <UserLayout>
+                            <UnauthorizedAccess />
+                        </UserLayout>
+                    ) : (
+                        <AppLayout>
+                            <UnauthorizedAccess />
+                        </AppLayout>
+                    )
+                }
+            />
+
+            <Route
+                path="/manage-payments"
+                element={
+                    userDetails ? (
+                        <ProtectedRoute roles={["admin"]}>
+                            <UserLayout>
+                                <ManagePayments />
+                            </UserLayout>
+                        </ProtectedRoute>
+                    ) : (
+                        <Navigate to="/login" />
+                    )
+                }
+            />
+
+            <Route
+                path="/manage-subscription"
+                element={
+                    userDetails ? (
+                        <ProtectedRoute roles={["admin"]}>
+                            <UserLayout>
+                                <ManageSubscription />
+                            </UserLayout>
+                        </ProtectedRoute>
+                    ) : (
+                        <Navigate to="/login" />
+                    )
+                }
             />
         </Routes>
     );

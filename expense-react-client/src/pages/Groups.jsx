@@ -3,19 +3,29 @@ import { serverEndpoint } from "../config/appConfig";
 import { useEffect, useState } from "react";
 import GroupCard from "../components/GroupCard";
 import CreateGroupModal from "../components/CreateGroupModal";
+import { usePermission } from "../rbac/userPermission";
 
 function Groups() {
     const [groups, setGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [show, setShow] = useState(false);
+    const permissions = usePermission();
 
-    const fetchGroups = async () => {
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [limit] = useState(3);
+    const [sortBy, setSortBy] = useState('newest');
+
+    const fetchGroups = async (page = 1) => {
         try {
             const response = await axios.get(
-                `${serverEndpoint}/groups/my-groups`,
+                `${serverEndpoint}/groups/my-groups?page=${page}&limit=${limit}&sortBy=${sortBy}`,
                 { withCredentials: true }
             );
-            setGroups(response.data);
+            
+            setGroups(response?.data?.groups);
+            setTotalPages(response?.data?.pagination?.totalPages);
+            setCurrentPage(response?.data?.pagination?.currentPage);
         } catch (error) {
             console.log(error);
         } finally {
@@ -24,21 +34,25 @@ function Groups() {
     };
 
     const handleGroupUpdateSuccess = (data) => {
-        setGroups((prevGroups) => {
-            const exists = prevGroups.some((group) => group._id === data._id);
-            if (exists) {
-                return prevGroups.map((group) =>
-                    group._id === data._id ? data : group
-                );
-            } else {
-                return [data, ...prevGroups];
-            }
-        });
+        // Default to 1st page whenever there is an update to the group,
+        // or new group is added. This logic can be customized as per the
+        // user experience you want to provide. You can choose to keep the user
+        // on the same page or go to last page. No right or wrong answers here!
+        fetchGroups(1);
     };
 
+    // Triggers call to fetchGroups when the component is rendered for the very
+    // first time and also whenever value of the currentPage/sortBy state variable
+    // changes.
     useEffect(() => {
-        fetchGroups();
-    }, []);
+        fetchGroups(currentPage);
+    }, [currentPage, sortBy]);
+
+    const handlePageChange = (newPage) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
 
     if (loading) {
         return (
@@ -72,15 +86,32 @@ function Groups() {
                         expenses in one click.
                     </p>
                 </div>
-                <div className="col-md-4 text-center text-md-end">
-                    <button
-                        className="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm"
-                        onClick={() => setShow(true)}
-                    >
-                        <i className="bi bi-plus-lg me-2"></i>
-                        New Group
-                    </button>
-                </div>
+                
+                {permissions.canCreateGroups && (
+                    <div className="col-md-4 text-center text-md-end">
+                        <div className="d-flex align-items-center w-sm-auto">
+                            <label>Sort:</label>
+                            <select className="form-select form-select-sm rounded-pill me-2"
+                                value={sortBy}
+                                onChange={(e) => {
+                                    setSortBy(e.target.value);
+                                    setCurrentPage(1); // Reset to 1st page to show newly sorted results first.
+                                }}
+                            >
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                            </select>
+                            
+
+                            <button
+                                className="btn btn-primary btn-sm rounded-pill fw-bold shadow-sm"
+                                onClick={() => setShow(true)}
+                            >
+                                Add
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <hr className="mb-5 opacity-10" />
@@ -121,6 +152,39 @@ function Groups() {
                         </div>
                     ))}
                 </div>
+            )}
+
+            {totalPages > 1 && (
+                <nav className="mt-5 d-flex justify-content-center">
+                    <ul className="pagination shadow-sm">
+                        {/* Previous page button link */}
+                        <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                            <button className="page-link" 
+                                onClick={() => handlePageChange(currentPage - 1)} 
+                            >
+                                &laquo;
+                            </button>
+                        </li>
+
+                        {/* ...Array(totalPages) generates array of size totalPages with empty (undefined) values */}
+                        {[...Array(totalPages)].map((num, index) => (
+                            <li key={index+1} className={`page-item ${currentPage === (index+1) ? "active" : ""}`}>
+                                <button className="page-link" onClick={() => handlePageChange(index+1)}>
+                                    {index+1}
+                                </button>
+                            </li>
+                        ))}
+
+                        {/* Next page button link */}
+                        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                            <button className="page-link" 
+                                onClick={() => handlePageChange(currentPage + 1)} 
+                            >
+                                &raquo;
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
             )}
 
             <CreateGroupModal

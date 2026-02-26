@@ -46,7 +46,7 @@ function Login() {
 
     const handleFormSubmit = async (event) => {
         // Prevent default behaviour of form which is to do complete page reload.
-        event.preventDefault(); 
+        event.preventDefault();
 
         if (validate()) {
             try {
@@ -60,13 +60,11 @@ function Login() {
                     body,
                     config
                 );
-                localStorage.setItem("token", response.data.token);
                 // setUser(response.data.user);
                 dispatch({
                     type: SET_USER,
                     payload: response.data.user,
                 });
-                setMessage("Login successful");
             } catch (error) {
                 console.log(error);
                 setErrors({
@@ -78,48 +76,22 @@ function Login() {
 
     const handleGoogleSuccess = async (authResponse) => {
         try {
-            console.log('=== Google Authentication Success ===');
-            console.log('AuthResponse received:', {
-                credential: authResponse?.credential ? 'received (JWT token)' : 'MISSING',
-                clientId: authResponse?.clientId ? 'present' : 'missing'
-            });
-            
-            if (!authResponse?.credential) {
-                console.error('ERROR: No credential in authResponse');
-                setErrors({
-                    message: "No credential received from Google. Please try again.",
-                });
-                return;
-            }
-
             const body = {
-                idToken: authResponse.credential,
+                idToken: authResponse?.credential,
             };
-            
-            console.log('Sending request to backend...');
-            console.log('Server endpoint:', serverEndpoint);
-            
             const response = await axios.post(
                 `${serverEndpoint}/auth/google-auth`,
                 body,
                 { withCredentials: true }
             );
-            localStorage.setItem("token", response.data.token);
-
-            console.log('Backend response received:', response.data);
             dispatch({
                 type: SET_USER,
                 payload: response.data.user,
             });
-            console.log('User logged in successfully');
         } catch (error) {
-            console.error('=== Google SSO Error ===');
-            console.error('Error status:', error.response?.status);
-            console.error('Error message:', error.response?.data?.message);
-            console.error('Full error response:', error.response?.data);
-            console.error('Network error:', error.message);
+            console.log(error);
             setErrors({
-                message: error.response?.data?.message || "Unable to process google sso, please try again",
+                message: "Unable to process google sso, please try again",
             });
         }
     };
@@ -204,23 +176,7 @@ function Login() {
                                         Sign In
                                     </button>
                                 </div>
-                                {/* Forgot Password Link */}
-                                <div className="text-center mb-3">
-                                    <Link to="/forgot-password" className="btn btn-link btn-sm text-decoration-none text-primary">
-                                        Forgot Password?
-                                    </Link>
-                                </div>
                             </form>
-
-                            {/* Link to Signup */}
-                            <div className="text-center mb-3">
-                                <p className="text-muted small">
-                                    Don't have an account?{" "}
-                                    <Link to="/signup" className="text-primary fw-bold text-decoration-none">
-                                        Sign Up
-                                    </Link>
-                                </p>
-                            </div>
 
                             {/* Divider */}
                             <div className="d-flex align-items-center my-2">
