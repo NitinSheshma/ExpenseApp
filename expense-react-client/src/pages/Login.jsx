@@ -4,7 +4,6 @@ import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 import { serverEndpoint } from "../config/appConfig";
 import { useDispatch } from "react-redux";
 import { SET_USER } from "../redux/user/action";
-import { Link } from "react-router-dom";
 
 function Login() {
     const dispatch = useDispatch();
@@ -13,12 +12,12 @@ function Login() {
         email: "",
         password: "",
     });
+
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState("");
 
     const handleChange = (event) => {
-        const name = event.target.name;
-        const value = event.target.value;
+        const { name, value } = event.target;
 
         setFormData({
             ...formData,
@@ -30,12 +29,12 @@ function Login() {
         let newErrors = {};
         let isValid = true;
 
-        if (formData.email.length === 0) {
+        if (!formData.email) {
             newErrors.email = "Email is required";
             isValid = false;
         }
 
-        if (formData.password.length === 0) {
+        if (!formData.password) {
             newErrors.password = "Password is required";
             isValid = false;
         }
@@ -45,51 +44,52 @@ function Login() {
     };
 
     const handleFormSubmit = async (event) => {
-        // Prevent default behaviour of form which is to do complete page reload.
         event.preventDefault();
 
         if (validate()) {
             try {
-                const body = {
-                    email: formData.email,
-                    password: formData.password,
-                };
-                const config = { withCredentials: true };
                 const response = await axios.post(
                     `${serverEndpoint}/auth/login`,
-                    body,
-                    config
+                    formData,
+                    { withCredentials: true }
                 );
-                // setUser(response.data.user);
+
                 dispatch({
                     type: SET_USER,
                     payload: response.data.user,
                 });
+
             } catch (error) {
                 console.log(error);
                 setErrors({
-                    message: "Something went wrong, please try again",
+                    message: "Login failed, please try again",
                 });
             }
         }
     };
 
+    // ✅ GOOGLE LOGIN FIXED
     const handleGoogleSuccess = async (authResponse) => {
         try {
-            const body = {
-                idToken: authResponse?.credential,
-            };
+            console.log("Google Response:", authResponse);
+
             const response = await axios.post(
-                `${serverEndpoint}/auth/google-auth`,
-                body,
+                `${serverEndpoint}/auth/google-auth`, // make sure this matches backend
+                {
+                    token: authResponse.credential, // ✅ IMPORTANT FIX
+                },
                 { withCredentials: true }
             );
+
+            console.log("Backend Response:", response.data);
+
             dispatch({
                 type: SET_USER,
                 payload: response.data.user,
             });
+
         } catch (error) {
-            console.log(error);
+            console.log("Google Login Error:", error);
             setErrors({
                 message: "Unable to process google sso, please try again",
             });
@@ -97,10 +97,9 @@ function Login() {
     };
 
     const handleGoogleFailure = (error) => {
-        console.log(error);
+        console.log("Google Error:", error);
         setErrors({
-            message:
-                "Something went wrong while performing google single sign-on",
+            message: "Google login failed",
         });
     };
 
@@ -108,102 +107,52 @@ function Login() {
         <div className="container py-5">
             <div className="row justify-content-center">
                 <div className="col-md-5">
-                    {/* Main Login Card */}
-                    <div className="card shadow-lg border-0 rounded-4 overflow-hidden">
+                    <div className="card shadow-lg border-0 rounded-4">
                         <div className="card-body p-5">
-                            {/* Brand Header */}
-                            <div className="text-center mb-4">
-                                <h2 className="fw-bold text-dark">
-                                    Welcome{" "}
-                                    <span className="text-primary">Back</span>
-                                </h2>
-                                <p className="text-muted">
-                                    Login to manage your MergeMoney account
-                                </p>
-                            </div>
 
-                            {/* Global Alerts */}
+                            <h2 className="text-center mb-3">
+                                Welcome <span className="text-primary">Back</span>
+                            </h2>
+
                             {(message || errors.message) && (
-                                <div className="alert alert-danger py-2 small border-0 shadow-sm mb-4">
-                                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                <div className="alert alert-danger">
                                     {message || errors.message}
                                 </div>
                             )}
 
-                            <form onSubmit={handleFormSubmit} noValidate>
-                                <div className="mb-3">
-                                    <label className="form-label small fw-bold text-secondary">
-                                        Email Address
-                                    </label>
-                                    <input
-                                        className={`form-control form-control-lg rounded-3 fs-6 ${
-                                            errors.email ? "is-invalid" : ""
-                                        }`}
-                                        type="email"
-                                        name="email"
-                                        placeholder="name@example.com"
-                                        onChange={handleChange}
-                                    />
-                                    {errors.email && (
-                                        <div className="invalid-feedback">
-                                            {errors.email}
-                                        </div>
-                                    )}
-                                </div>
+                            <form onSubmit={handleFormSubmit}>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    placeholder="Email"
+                                    className="form-control mb-3"
+                                    onChange={handleChange}
+                                />
 
-                                <div className="mb-4">
-                                    <label className="form-label small fw-bold text-secondary">
-                                        Password
-                                    </label>
-                                    <input
-                                        className={`form-control form-control-lg rounded-3 fs-6 ${
-                                            errors.password ? "is-invalid" : ""
-                                        }`}
-                                        type="password"
-                                        name="password"
-                                        placeholder="Enter your password"
-                                        onChange={handleChange}
-                                    />
-                                    {errors.password && (
-                                        <div className="invalid-feedback">
-                                            {errors.password}
-                                        </div>
-                                    )}
-                                </div>
+                                <input
+                                    type="password"
+                                    name="password"
+                                    placeholder="Password"
+                                    className="form-control mb-3"
+                                    onChange={handleChange}
+                                />
 
-                                <div className="d-flex justify-content-center">
-                                    <button className="btn btn-primary w-100 btn-md rounded-pill fw-bold shadow-sm mb-4">
-                                        Sign In
-                                    </button>
-                                </div>
+                                <button className="btn btn-primary w-100 mb-3">
+                                    Sign In
+                                </button>
                             </form>
 
-                            {/* Divider */}
-                            <div className="d-flex align-items-center my-2">
-                                <hr className="flex-grow-1 text-muted" />
-                                <span className="mx-3 text-muted small fw-bold">
-                                    OR
-                                </span>
-                                <hr className="flex-grow-1 text-muted" />
-                            </div>
+                            <div className="text-center mb-2">OR</div>
 
-                            {/* Google Social Login */}
-                            <div className="d-flex justify-content-center w-100">
-                                <GoogleOAuthProvider
-                                    clientId={
-                                        import.meta.env.VITE_GOOGLE_CLIENT_ID
-                                    }
-                                >
-                                    <GoogleLogin
-                                        onSuccess={handleGoogleSuccess}
-                                        onError={handleGoogleFailure}
-                                        theme="outline"
-                                        shape="pill"
-                                        text="signin_with"
-                                        width="500"
-                                    />
-                                </GoogleOAuthProvider>
-                            </div>
+                            {/* ✅ GOOGLE LOGIN */}
+                            <GoogleOAuthProvider
+                                clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
+                            >
+                                <GoogleLogin
+                                    onSuccess={handleGoogleSuccess}
+                                    onError={handleGoogleFailure}
+                                />
+                            </GoogleOAuthProvider>
 
                         </div>
                     </div>

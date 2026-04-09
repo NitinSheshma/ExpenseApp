@@ -1,3 +1,4 @@
+console.log("CLIENT ID:", import.meta.env.VITE_GOOGLE_CLIENT_ID);
 import { useState } from "react";
 import axios from "axios";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
