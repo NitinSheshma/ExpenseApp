@@ -36,7 +36,7 @@ const app = express();
 // ================= CORS =================
 // TEMP: allow all (safe for now, fix later for production)
 app.use(cors({
-    origin: true,
+    origin: "https://expense-app-peach.vercel.app/",
     credentials: true
 }));
 
